@@ -20,8 +20,10 @@ package securityexceptionitem
 import (
 	"context"
 
+	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
 	kibanaoapi "github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
+	"github.com/elastic/terraform-provider-elasticstack/internal/diagutil"
 	"github.com/elastic/terraform-provider-elasticstack/internal/entitycore"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
@@ -44,7 +46,14 @@ func updateExceptionItem(
 	}
 
 	// Update the exception item
-	updateResp, d := kibanaoapi.UpdateExceptionListItem(ctx, oapiClient, req.SpaceID, *body)
+	resp, err := oapiClient.API.UpdateExceptionListItemWithResponse(ctx, req.SpaceID, *body, withRefreshFalse)
+	if err != nil {
+		diags.Append(diagutil.FrameworkDiagFromError(err)...)
+		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags
+	}
+
+	updateResp, d := kibanaoapi.HandleMutateTypedResponse(resp.StatusCode(), resp.Body,
+		func() *kbapi.SecurityExceptionsAPIExceptionListItem { return resp.JSON200 })
 	diags.Append(d...)
 	if diags.HasError() {
 		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags

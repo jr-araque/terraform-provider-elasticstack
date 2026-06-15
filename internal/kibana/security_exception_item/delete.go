@@ -19,10 +19,11 @@ package securityexceptionitem
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
-	kibanaoapi "github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
+	"github.com/elastic/terraform-provider-elasticstack/internal/diagutil"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
@@ -34,6 +35,10 @@ func deleteExceptionItem(ctx context.Context, client *clients.KibanaScopedClient
 		Id: &id,
 	}
 
-	paramsDiags := kibanaoapi.DeleteExceptionListItem(ctx, oapiClient, spaceID, params)
-	return paramsDiags
+	resp, err := oapiClient.API.DeleteExceptionListItemWithResponse(ctx, spaceID, params, withRefreshFalse)
+	if err != nil {
+		return diagutil.FrameworkDiagFromError(err)
+	}
+
+	return diagutil.HandleStatusResponse(resp.StatusCode(), resp.Body, http.StatusOK, http.StatusNotFound)
 }

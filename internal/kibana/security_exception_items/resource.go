@@ -21,7 +21,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
 	"github.com/elastic/terraform-provider-elasticstack/internal/entitycore"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -62,36 +61,38 @@ func NewResource() resource.Resource {
 
 // ImportState supports two import ID formats:
 //
-//   - "<spaceID>/<listID>" — namespace_type defaults to "single"
-//   - "<spaceID>/<listID>/agnostic" — for space-agnostic lists
+//   - "<spaceID>/<listID>"           — namespace_type defaults to "single"
+//   - "<spaceID>/<listID>/agnostic"  — for space-agnostic lists
 //
-// The third segment, if present, is written to the namespace_type attribute
-// so that Read uses the correct namespace when fetching items.
+// The canonical composite ID stored in state is always the 2-segment form
+// "<spaceID>/<listID>". The third segment, when present, is written to
+// namespace_type and stripped from the id attribute so that the envelope's
+// CompositeIDFromStr parses a clean spaceID + listID pair.
 func (r *ExceptionItemsResource) ImportState(
 	ctx context.Context,
 	request resource.ImportStateRequest,
 	response *resource.ImportStateResponse,
 ) {
-	// Write the raw import ID to the "id" attribute — the envelope's Read
-	// callback will split it into spaceID + listID via CompositeIDFromStr.
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), request, response)
-
-	// If a third segment is present, extract namespace_type from it.
-	// Format: "<spaceID>/<listID>/<namespaceType>"
-	compID, diags := clients.CompositeIDFromStr(request.ID)
-	response.Diagnostics.Append(diags...)
-	if response.Diagnostics.HasError() {
+	parts := strings.SplitN(request.ID, "/", 3)
+	if len(parts) < 2 {
+		response.Diagnostics.AddError(
+			"Invalid import ID",
+			"Expected format: <space_id>/<list_id> or <space_id>/<list_id>/agnostic",
+		)
 		return
 	}
 
-	// CompositeIDFromStr only parses two segments. Check for a third manually.
-	parts := strings.SplitN(request.ID, "/", 3)
+	// Store only the 2-segment composite so CompositeIDFromStr in Read
+	// resolves spaceID=parts[0] and listID=parts[1] without the third segment
+	// being folded into the listID.
+	canonicalID := parts[0] + "/" + parts[1]
+	response.Diagnostics.Append(
+		response.State.SetAttribute(ctx, path.Root("id"), types.StringValue(canonicalID))...,
+	)
+
 	if len(parts) == 3 {
-		nsType := parts[2]
 		response.Diagnostics.Append(
-			response.State.SetAttribute(ctx, path.Root("namespace_type"), types.StringValue(nsType))...,
+			response.State.SetAttribute(ctx, path.Root("namespace_type"), types.StringValue(parts[2]))...,
 		)
 	}
-
-	_ = compID // used implicitly via ImportStatePassthroughID above
 }

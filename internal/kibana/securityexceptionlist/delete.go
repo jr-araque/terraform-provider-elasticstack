@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
 	kibanaoapi "github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
+	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanautil"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
@@ -41,6 +42,6 @@ func deleteExceptionList(ctx context.Context, client *clients.KibanaScopedClient
 		params.NamespaceType = &nsType
 	}
 
-	diags.Append(kibanaoapi.DeleteExceptionList(ctx, oapiClient, spaceID, params)...)
+	diags.Append(kibanaoapi.DeleteExceptionList(ctx, oapiClient, spaceID, params, kibanautil.WithRefreshFalse)...)
 	return diags
 }

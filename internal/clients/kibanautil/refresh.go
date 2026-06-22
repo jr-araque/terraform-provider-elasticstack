@@ -15,25 +15,19 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package securityexceptionitem
+package kibanautil
 
 import (
 	"context"
-
-	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
-	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
-	kibanaoapi "github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
-	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanautil"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"net/http"
 )
 
-func deleteExceptionItem(ctx context.Context, client *clients.KibanaScopedClient, resourceID, spaceID string, _ ExceptionItemModel) diag.Diagnostics {
-	oapiClient := client.GetKibanaOapiClient()
-
-	id := resourceID
-	params := &kbapi.DeleteExceptionListItemParams{
-		Id: &id,
-	}
-
-	return kibanaoapi.DeleteExceptionListItem(ctx, oapiClient, spaceID, params, kibanautil.WithRefreshFalse)
+// WithRefreshFalse is a RequestEditorFn that appends refresh=false to the
+// request URL, preventing Elasticsearch from waiting for an index refresh
+// after each write operation.
+func WithRefreshFalse(_ context.Context, req *http.Request) error {
+	q := req.URL.Query()
+	q.Set("refresh", "false")
+	req.URL.RawQuery = q.Encode()
+	return nil
 }

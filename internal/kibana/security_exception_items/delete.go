@@ -15,44 +15,63 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package securityexceptionitem
+package securityexceptionitems
 
 import (
 	"context"
 
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
-	kibanaoapi "github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
-	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanautil"
-	"github.com/elastic/terraform-provider-elasticstack/internal/entitycore"
+	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
-func updateExceptionItem(
+func deleteExceptionItems(
 	ctx context.Context,
 	client *clients.KibanaScopedClient,
-	req entitycore.KibanaWriteRequest[ExceptionItemModel],
-) (entitycore.KibanaWriteResult[ExceptionItemModel], diag.Diagnostics) {
-	m := req.Plan
+	resourceID, spaceID string,
+	model ExceptionItemsModel,
+) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	oapiClient := client.GetKibanaOapiClient()
 
-	body, d := m.toUpdateRequest(ctx, req.WriteID)
+	items, d := planItems(ctx, model)
 	diags.Append(d...)
 	if diags.HasError() {
-		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags
+		return diags
 	}
 
-	updateResp, d := kibanaoapi.UpdateExceptionListItem(ctx, oapiClient, req.SpaceID, *body, kibanautil.WithRefreshFalse)
-	diags.Append(d...)
-	if diags.HasError() {
-		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags
+	// Collect all item IDs from state
+	var ids []string
+	for _, item := range items {
+		if !item.ID.IsNull() && item.ID.ValueString() != "" {
+			ids = append(ids, item.ID.ValueString())
+		}
 	}
 
-	if updateResp == nil {
-		diags.AddError("Failed to update exception item", "API returned empty response")
-		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags
+	if len(ids) == 0 {
+		return diags
 	}
 
-	return entitycore.KibanaWriteResult[ExceptionItemModel]{Model: m}, diags
+	nsType := model.NamespaceType.ValueString()
+	if nsType == "" {
+		nsType = "single"
+	}
+
+	// Chunk deletes
+	for start := 0; start < len(ids); start += bulkChunkSize {
+		end := min(start+bulkChunkSize, len(ids))
+		chunk := ids[start:end]
+
+		_, d := kibanaoapi.BulkDeleteExceptionListItems(ctx, oapiClient, spaceID, kibanaoapi.ExceptionItemBulkDeleteRequest{
+			IDs:           chunk,
+			NamespaceType: nsType,
+		})
+		diags.Append(d...)
+		if diags.HasError() {
+			return diags
+		}
+	}
+
+	return diags
 }

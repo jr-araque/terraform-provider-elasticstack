@@ -19,24 +19,15 @@ package securityexceptionitem
 
 import (
 	"context"
-	"net/http"
 
-	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
 	kibanaoapi "github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
-	"github.com/elastic/terraform-provider-elasticstack/internal/diagutil"
+	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanautil"
 	"github.com/elastic/terraform-provider-elasticstack/internal/entitycore"
 	"github.com/elastic/terraform-provider-elasticstack/internal/utils/typeutils"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-func withRefreshFalse(_ context.Context, req *http.Request) error {
-	q := req.URL.Query()
-	q.Set("refresh", "false")
-	req.URL.RawQuery = q.Encode()
-	return nil
-}
 
 func createExceptionItem(
 	ctx context.Context,
@@ -48,22 +39,13 @@ func createExceptionItem(
 
 	oapiClient := client.GetKibanaOapiClient()
 
-	// Build the request body using model method
 	body, d := m.toCreateRequest(ctx)
 	diags.Append(d...)
 	if diags.HasError() {
 		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags
 	}
 
-	// Create the exception item
-	resp, err := oapiClient.API.CreateExceptionListItemWithResponse(ctx, req.SpaceID, *body, withRefreshFalse)
-	if err != nil {
-		diags.Append(diagutil.FrameworkDiagFromError(err)...)
-		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags
-	}
-
-	createResp, d := kibanaoapi.HandleMutateTypedResponse(resp.StatusCode(), resp.Body,
-		func() *kbapi.SecurityExceptionsAPIExceptionListItem { return resp.JSON200 })
+	createResp, d := kibanaoapi.CreateExceptionListItem(ctx, oapiClient, req.SpaceID, *body, kibanautil.WithRefreshFalse)
 	diags.Append(d...)
 	if diags.HasError() {
 		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags

@@ -22,6 +22,7 @@ import (
 
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
 	kibanaoapi "github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
+	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanautil"
 	"github.com/elastic/terraform-provider-elasticstack/internal/entitycore"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -43,7 +44,7 @@ func createExceptionList(
 		return entitycore.KibanaWriteResult[ExceptionListModel]{}, diags
 	}
 
-	createResp, d := kibanaoapi.CreateExceptionList(ctx, oapiClient, req.SpaceID, *body)
+	createResp, d := kibanaoapi.CreateExceptionList(ctx, oapiClient, req.SpaceID, *body, kibanautil.WithRefreshFalse)
 	diags.Append(d...)
 	if diags.HasError() {
 		return entitycore.KibanaWriteResult[ExceptionListModel]{}, diags

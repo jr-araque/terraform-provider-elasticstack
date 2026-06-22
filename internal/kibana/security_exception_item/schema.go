@@ -21,12 +21,10 @@ import (
 	"context"
 	_ "embed"
 
-	"github.com/elastic/terraform-provider-elasticstack/internal/utils/validators"
+	shared "github.com/elastic/terraform-provider-elasticstack/internal/kibana/securityexceptionshared"
 	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
 	"github.com/hashicorp/terraform-plugin-framework-timetypes/timetypes"
-	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -82,7 +80,7 @@ func getSchema(_ context.Context) schema.Schema {
 				MarkdownDescription: "Describes the exception item.",
 				Required:            true,
 			},
-			attrType: schema.StringAttribute{
+			shared.AttrType: schema.StringAttribute{
 				MarkdownDescription: "The type of exception item. Must be `simple`.",
 				Required:            true,
 				Validators: []validator.String{
@@ -119,130 +117,8 @@ func getSchema(_ context.Context) schema.Schema {
 				Optional:            true,
 				CustomType:          jsontypes.NormalizedType{},
 			},
-			attrEntries: schema.ListNestedAttribute{
-				MarkdownDescription: "The exception item entries. This defines the conditions under which the exception applies.",
-				Required:            true,
-				Validators: []validator.List{
-					listvalidator.SizeAtLeast(1),
-				},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						attrType: schema.StringAttribute{
-							MarkdownDescription: "The type of entry. Valid values: `match`, `match_any`, `list`, `exists`, `nested`, `wildcard`.",
-							Required:            true,
-							Validators: []validator.String{
-								stringvalidator.OneOf(entryTypeMatch, entryTypeMatchAny, entryTypeList, entryTypeExists, entryTypeNested, entryTypeWildcard),
-							},
-						},
-						attrField: schema.StringAttribute{
-							MarkdownDescription: "The field name. Required for all entry types.",
-							Required:            true,
-						},
-						attrOperator: schema.StringAttribute{
-							MarkdownDescription: "The operator to use. Valid values: `included`, `excluded`. Note: The operator field is not supported for nested entry types and will be ignored if specified.",
-							Optional:            true,
-							Validators: []validator.String{
-								stringvalidator.OneOf("included", "excluded"),
-							},
-						},
-						attrValue: schema.StringAttribute{
-							MarkdownDescription: "The value to match (for `match` and `wildcard` types).",
-							Optional:            true,
-							Validators: []validator.String{
-								validators.RequiredIfDependentPathOneOf(
-									path.Root(attrType),
-									[]string{entryTypeMatch, entryTypeWildcard},
-								),
-							},
-						},
-						attrValues: schema.ListAttribute{
-							ElementType:         types.StringType,
-							MarkdownDescription: "Array of values to match (for `match_any` type).",
-							Optional:            true,
-						},
-						entryTypeList: schema.SingleNestedAttribute{
-							MarkdownDescription: "Value list reference (for `list` type).",
-							Optional:            true,
-							Attributes: map[string]schema.Attribute{
-								"id": schema.StringAttribute{
-									MarkdownDescription: "The value list ID.",
-									Required:            true,
-								},
-								attrType: schema.StringAttribute{
-									MarkdownDescription: "The value list type (e.g., `keyword`, `ip`, `ip_range`).",
-									Required:            true,
-									Validators: []validator.String{
-										stringvalidator.OneOf("keyword", "ip", "ip_range"),
-									},
-								},
-							},
-						},
-						attrEntries: schema.ListNestedAttribute{
-							MarkdownDescription: "Nested entries (for `nested` type). Only `match`, `match_any`, and `exists` entry types are allowed as nested entries.",
-							Optional:            true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									attrType: schema.StringAttribute{
-										MarkdownDescription: "The type of nested entry. Valid values: `match`, `match_any`, `exists`.",
-										Required:            true,
-										Validators: []validator.String{
-											stringvalidator.OneOf(entryTypeMatch, entryTypeMatchAny, entryTypeExists),
-										},
-									},
-									attrField: schema.StringAttribute{
-										MarkdownDescription: "The field name.",
-										Required:            true,
-									},
-									attrOperator: schema.StringAttribute{
-										MarkdownDescription: "The operator to use. Valid values: `included`, `excluded`.",
-										Required:            true,
-										Validators: []validator.String{
-											stringvalidator.OneOf("included", "excluded"),
-										},
-									},
-									attrValue: schema.StringAttribute{
-										MarkdownDescription: "The value to match (for `match` type).",
-										Optional:            true,
-										Validators: []validator.String{
-											validators.RequiredIfDependentPathOneOf(
-												path.Root(attrType),
-												[]string{entryTypeMatch},
-											),
-										},
-									},
-									attrValues: schema.ListAttribute{
-										ElementType:         types.StringType,
-										MarkdownDescription: "Array of values to match (for `match_any` type).",
-										Optional:            true,
-										Validators: []validator.List{
-											validators.RequiredIfDependentPathOneOf(
-												path.Root(attrType),
-												[]string{entryTypeMatchAny},
-											),
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			"comments": schema.ListNestedAttribute{
-				MarkdownDescription: "Array of comments about the exception item.",
-				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"id": schema.StringAttribute{
-							MarkdownDescription: "The unique identifier of the comment (auto-generated by Kibana).",
-							Computed:            true,
-						},
-						"comment": schema.StringAttribute{
-							MarkdownDescription: "The comment text.",
-							Required:            true,
-						},
-					},
-				},
-			},
+			shared.AttrEntries: shared.EntriesSchema(),
+			"comments":         shared.CommentsSchema(),
 			"expire_time": schema.StringAttribute{
 				MarkdownDescription: "The exception item's expiration date in RFC3339 format. This field is only available for regular exception items, not endpoint exceptions.",
 				Optional:            true,

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanautil"
@@ -232,7 +233,7 @@ func doExceptionItemBulkRequest[Req any, Resp any](
 		return nil, diags
 	}
 
-	url := client.URL + path
+	url := strings.TrimSuffix(client.URL, "/") + path
 	httpReq, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(bodyBytes))
 	if err != nil {
 		diags.AddError("Failed to create bulk request", err.Error())

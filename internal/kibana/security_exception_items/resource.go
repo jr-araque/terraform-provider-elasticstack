@@ -61,20 +61,31 @@ func NewResource() resource.Resource {
 
 // ImportState supports two import ID formats:
 //
-//   - "<spaceID>/<listID>"           — namespace_type defaults to "single"
-//   - "<spaceID>/<listID>/agnostic"  — for space-agnostic lists
+//   - "<spaceID>/<listID>"            — namespace_type defaults to "single"
+//   - "<spaceID>/<listID>/agnostic"   — for space-agnostic lists
+//   - "<spaceID>/<listID>/single"     — explicit single (same as default)
 //
-// The canonical composite ID stored in state is always the 2-segment form
-// "<spaceID>/<listID>". The third segment, when present, is written to
-// namespace_type and stripped from the id attribute so that the envelope's
-// CompositeIDFromStr parses a clean spaceID + listID pair.
+// namespace_type is detected as a suffix rather than a positional split because
+// list_id may itself contain forward slashes. The suffix approach is unambiguous
+// since the only valid values ("single", "agnostic") cannot collide with a list_id.
 func (r *ExceptionItemsResource) ImportState(
 	ctx context.Context,
 	request resource.ImportStateRequest,
 	response *resource.ImportStateResponse,
 ) {
-	parts := strings.SplitN(request.ID, "/", 3)
-	if len(parts) < 2 {
+	id := request.ID
+	var nsType string
+
+	switch {
+	case strings.HasSuffix(id, "/agnostic"):
+		nsType = "agnostic"
+		id = strings.TrimSuffix(id, "/agnostic")
+	case strings.HasSuffix(id, "/single"):
+		nsType = "single"
+		id = strings.TrimSuffix(id, "/single")
+	}
+
+	if id == "" {
 		response.Diagnostics.AddError(
 			"Invalid import ID",
 			"Expected format: <space_id>/<list_id> or <space_id>/<list_id>/agnostic",
@@ -82,17 +93,13 @@ func (r *ExceptionItemsResource) ImportState(
 		return
 	}
 
-	// Store only the 2-segment composite so CompositeIDFromStr in Read
-	// resolves spaceID=parts[0] and listID=parts[1] without the third segment
-	// being folded into the listID.
-	canonicalID := parts[0] + "/" + parts[1]
 	response.Diagnostics.Append(
-		response.State.SetAttribute(ctx, path.Root("id"), types.StringValue(canonicalID))...,
+		response.State.SetAttribute(ctx, path.Root("id"), types.StringValue(id))...,
 	)
 
-	if len(parts) == 3 {
+	if nsType != "" {
 		response.Diagnostics.Append(
-			response.State.SetAttribute(ctx, path.Root("namespace_type"), types.StringValue(parts[2]))...,
+			response.State.SetAttribute(ctx, path.Root("namespace_type"), types.StringValue(nsType))...,
 		)
 	}
 }

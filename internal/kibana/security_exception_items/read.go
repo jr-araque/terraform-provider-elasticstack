@@ -19,6 +19,7 @@ package securityexceptionitems
 
 import (
 	"context"
+	"sort"
 
 	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
@@ -68,15 +69,19 @@ func readExceptionItems(
 		return model, false, diags
 	}
 
-	// Convert API items to model, preserving prior-state order.
-	converted := make([]BulkItemModel, 0, len(apiItems))
+	// Build a lookup of API items by item_id.
 	apiByItemID := make(map[string]int, len(apiItems))
 	for i, apiItem := range apiItems {
 		apiByItemID[apiItem.ItemId] = i
 	}
 
-	// First: items that were in prior state (preserve order)
-	for _, prior := range getPriorOrder(ctx, model) {
+	converted := make([]BulkItemModel, 0, len(apiItems))
+
+	// First: items that were in prior state, in their stored order.
+	// This preserves the user's declared order across refreshes.
+	priorItems, pd := planItems(ctx, model)
+	diags.Append(pd...)
+	for _, prior := range priorItems {
 		idx, found := apiByItemID[prior.ItemID.ValueString()]
 		if !found {
 			continue
@@ -87,8 +92,16 @@ func readExceptionItems(
 		delete(apiByItemID, apiItems[idx].ItemId)
 	}
 
-	// Then: new items not in prior state
-	for _, idx := range apiByItemID {
+	// Then: items not in prior state (e.g. imported resource, out-of-band additions).
+	// Sort by item_id for deterministic ordering so repeated Reads produce identical
+	// state and do not trigger spurious plan diffs.
+	remaining := make([]string, 0, len(apiByItemID))
+	for itemID := range apiByItemID {
+		remaining = append(remaining, itemID)
+	}
+	sort.Strings(remaining)
+	for _, itemID := range remaining {
+		idx := apiByItemID[itemID]
 		item, d := itemFromAPI(ctx, apiItems[idx], nil)
 		diags.Append(d...)
 		converted = append(converted, item)
@@ -100,10 +113,4 @@ func readExceptionItems(
 	model.ID = types.StringValue(buildCompositeID(spaceID, listID))
 
 	return model, true, diags
-}
-
-// getPriorOrder returns the prior state's items in their stored order.
-func getPriorOrder(ctx context.Context, model ExceptionItemsModel) []BulkItemModel {
-	items, _ := planItems(ctx, model)
-	return items
 }

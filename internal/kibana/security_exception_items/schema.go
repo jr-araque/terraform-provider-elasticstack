@@ -39,9 +39,14 @@ const maxBulkItems = 10000
 
 func getSchema(_ context.Context) schema.Schema {
 	return schema.Schema{
-		MarkdownDescription: "Manages multiple exception list items for a given exception list in bulk. " +
-			"Supports up to 10,000 items per resource. Uses Kibana bulk endpoints for efficient batch operations. " +
-			"Use `elasticstack_kibana_security_exception_item` for single-item lifecycle management.",
+		MarkdownDescription: "Manages **all** exception list items for a given exception list as a single " +
+			"aggregate resource. Supports up to 10,000 items; all bulk API calls are internally chunked " +
+			"into 1,000-item batches.\n\n" +
+			"~> **Ownership conflict**: Do not mix this resource with " +
+			"`elasticstack_kibana_security_exception_item` (singular) for the same `list_id`. " +
+			"This resource's Read fetches all items from the list — on the next apply it will " +
+			"delete any items it does not recognise from its own state, including items managed " +
+			"by the singular resource.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The composite identifier of the resource (`<space_id>/<list_id>`).",

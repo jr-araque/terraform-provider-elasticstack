@@ -59,6 +59,21 @@ func NewResource() resource.Resource {
 	return newExceptionItemsResource()
 }
 
+// parseImportID splits a raw import ID into the canonical 2-segment composite ID
+// and an optional namespace_type suffix. Detection uses HasSuffix rather than a
+// positional split because list_id may itself contain forward slashes, and
+// "agnostic" / "single" cannot appear as valid list_id segments.
+func parseImportID(raw string) (id, nsType string) {
+	switch {
+	case strings.HasSuffix(raw, "/agnostic"):
+		return strings.TrimSuffix(raw, "/agnostic"), "agnostic"
+	case strings.HasSuffix(raw, "/single"):
+		return strings.TrimSuffix(raw, "/single"), "single"
+	default:
+		return raw, ""
+	}
+}
+
 // ImportState supports two import ID formats:
 //
 //   - "<spaceID>/<listID>"            — namespace_type defaults to "single"
@@ -73,17 +88,7 @@ func (r *ExceptionItemsResource) ImportState(
 	request resource.ImportStateRequest,
 	response *resource.ImportStateResponse,
 ) {
-	id := request.ID
-	var nsType string
-
-	switch {
-	case strings.HasSuffix(id, "/agnostic"):
-		nsType = "agnostic"
-		id = strings.TrimSuffix(id, "/agnostic")
-	case strings.HasSuffix(id, "/single"):
-		nsType = "single"
-		id = strings.TrimSuffix(id, "/single")
-	}
+	id, nsType := parseImportID(request.ID)
 
 	if id == "" {
 		response.Diagnostics.AddError(

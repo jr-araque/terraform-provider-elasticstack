@@ -137,10 +137,8 @@ func itemToBulkCreateRequest(ctx context.Context, item BulkItemModel) (kibanaoap
 		Entries:     entries,
 	}
 
-	if typeutils.IsKnown(item.ItemID) && item.ItemID.ValueString() != "" {
-		id := item.ItemID.ValueString()
-		req.ItemID = &id
-	}
+	id := item.ItemID.ValueString()
+	req.ItemID = &id
 
 	if typeutils.IsKnown(item.OsTypes) {
 		osTypes := typeutils.SetTypeAs[string](ctx, item.OsTypes, path.Empty(), &diags)
@@ -352,34 +350,29 @@ func itemFromAPI(ctx context.Context, apiItem kbapi.SecurityExceptionsAPIExcepti
 }
 
 // diffItems returns three slices: items to create, items to update, item IDs to delete.
-// Items are matched by item_id. Items in state without item_id are matched by their ES document ID.
+// Items are matched by item_id, which is required on the schema so every plan item has one.
 func diffItems(
 	planItems []BulkItemModel,
 	stateItems []BulkItemModel,
 ) (toCreate []BulkItemModel, toUpdate []BulkItemModel, toDeleteIDs []string) {
-	// Index state items by item_id
 	stateByItemID := make(map[string]BulkItemModel, len(stateItems))
 	for _, s := range stateItems {
-		if !s.ItemID.IsNull() && s.ItemID.ValueString() != "" {
-			stateByItemID[s.ItemID.ValueString()] = s
+		if id := s.ItemID.ValueString(); id != "" {
+			stateByItemID[id] = s
 		}
 	}
 
-	// Index plan items by item_id
 	planByItemID := make(map[string]BulkItemModel, len(planItems))
 	for _, p := range planItems {
-		if !p.ItemID.IsNull() && p.ItemID.ValueString() != "" {
-			planByItemID[p.ItemID.ValueString()] = p
-		} else {
-			// No item_id — always create
-			toCreate = append(toCreate, p)
+		if id := p.ItemID.ValueString(); id != "" {
+			planByItemID[id] = p
 		}
 	}
 
-	// Plan items with item_id: create if new, update if existing
+	// Plan items: create if new, update if already in state.
 	for itemID, p := range planByItemID {
 		if s, exists := stateByItemID[itemID]; exists {
-			// Exists — copy computed fields from state into plan item for update
+			// Copy computed fields from state so the bulk update carries the right ID and version.
 			p.ID = s.ID
 			p.Version = s.Version
 			toUpdate = append(toUpdate, p)
@@ -388,11 +381,11 @@ func diffItems(
 		}
 	}
 
-	// State items not in plan — delete
+	// State items not in plan → delete.
 	for itemID, s := range stateByItemID {
 		if _, inPlan := planByItemID[itemID]; !inPlan {
-			if !s.ID.IsNull() && s.ID.ValueString() != "" {
-				toDeleteIDs = append(toDeleteIDs, s.ID.ValueString())
+			if id := s.ID.ValueString(); id != "" {
+				toDeleteIDs = append(toDeleteIDs, id)
 			}
 		}
 	}

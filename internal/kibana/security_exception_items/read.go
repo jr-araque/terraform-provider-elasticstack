@@ -20,6 +20,7 @@ package securityexceptionitems
 import (
 	"context"
 
+	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -42,6 +43,24 @@ func readExceptionItems(
 	if nsType == "" {
 		nsType = "single"
 	}
+	nsTypeVal := kbapi.SecurityExceptionsAPIExceptionNamespaceType(nsType)
+	listIDVal := kbapi.SecurityExceptionsAPIExceptionListHumanId(listID)
+
+	// Check that the parent exception list still exists. An empty items result
+	// from _find is ambiguous: it could mean the list exists with 0 items, or
+	// the list was deleted out-of-band. We disambiguate with an explicit GET.
+	list, d := kibanaoapi.GetExceptionList(ctx, oapiClient, spaceID, &kbapi.ReadExceptionListParams{
+		ListId:        &listIDVal,
+		NamespaceType: &nsTypeVal,
+	})
+	diags.Append(d...)
+	if diags.HasError() {
+		return model, false, diags
+	}
+	if list == nil {
+		// 404 — the list itself is gone; remove the resource from state.
+		return model, false, diags
+	}
 
 	apiItems, d := kibanaoapi.FindExceptionListItemsAllPages(ctx, oapiClient, spaceID, listID, nsType)
 	diags.Append(d...)
@@ -49,27 +68,7 @@ func readExceptionItems(
 		return model, false, diags
 	}
 
-	// Build a prior-state map by item_id for order stabilisation and empty-set preservation
-	priorByItemID := make(map[string]*BulkItemModel)
-	if priorItems, d := planItems(ctx, model); d == nil {
-		for i := range priorItems {
-			if !priorItems[i].ItemID.IsNull() && priorItems[i].ItemID.ValueString() != "" {
-				id := priorItems[i].ItemID.ValueString()
-				priorByItemID[id] = &priorItems[i]
-			}
-		}
-	}
-
-	// If list doesn't exist (no items and prior state had items), treat as deleted
-	if len(apiItems) == 0 {
-		if _, d := planItems(ctx, model); d == nil {
-			if priorLen, _ := planItems(ctx, model); len(priorLen) > 0 {
-				return model, false, diags
-			}
-		}
-	}
-
-	// Convert API items to model, preserving prior-state order
+	// Convert API items to model, preserving prior-state order.
 	converted := make([]BulkItemModel, 0, len(apiItems))
 	apiByItemID := make(map[string]int, len(apiItems))
 	for i, apiItem := range apiItems {
@@ -89,13 +88,13 @@ func readExceptionItems(
 	}
 
 	// Then: new items not in prior state
-	for itemID, idx := range apiByItemID {
-		_ = itemID
+	for _, idx := range apiByItemID {
 		item, d := itemFromAPI(ctx, apiItems[idx], nil)
 		diags.Append(d...)
 		converted = append(converted, item)
 	}
 
+	model.NamespaceType = types.StringValue(nsType)
 	d = setItems(ctx, &model, converted)
 	diags.Append(d...)
 	model.ID = types.StringValue(buildCompositeID(spaceID, listID))

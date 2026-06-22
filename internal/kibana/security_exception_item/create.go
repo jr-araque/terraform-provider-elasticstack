@@ -45,7 +45,7 @@ func createExceptionItem(
 		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags
 	}
 
-	createResp, d := kibanaoapi.CreateExceptionListItem(ctx, oapiClient, req.SpaceID, *body, kibanautil.WithRefreshFalse)
+	createResp, d := kibanaoapi.CreateExceptionListItem(ctx, oapiClient, req.SpaceID, *body, kibanautil.WithRefreshWaitFor)
 	diags.Append(d...)
 	if diags.HasError() {
 		return entitycore.KibanaWriteResult[ExceptionItemModel]{}, diags

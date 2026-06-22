@@ -42,6 +42,6 @@ func deleteExceptionList(ctx context.Context, client *clients.KibanaScopedClient
 		params.NamespaceType = &nsType
 	}
 
-	diags.Append(kibanaoapi.DeleteExceptionList(ctx, oapiClient, spaceID, params, kibanautil.WithRefreshFalse)...)
+	diags.Append(kibanaoapi.DeleteExceptionList(ctx, oapiClient, spaceID, params, kibanautil.WithRefreshWaitFor)...)
 	return diags
 }

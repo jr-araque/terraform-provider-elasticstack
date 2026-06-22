@@ -44,7 +44,7 @@ func updateExceptionList(
 		return entitycore.KibanaWriteResult[ExceptionListModel]{}, diags
 	}
 
-	updateResp, d := kibanaoapi.UpdateExceptionList(ctx, oapiClient, req.SpaceID, *body, kibanautil.WithRefreshFalse)
+	updateResp, d := kibanaoapi.UpdateExceptionList(ctx, oapiClient, req.SpaceID, *body, kibanautil.WithRefreshWaitFor)
 	diags.Append(d...)
 	if diags.HasError() {
 		return entitycore.KibanaWriteResult[ExceptionListModel]{}, diags

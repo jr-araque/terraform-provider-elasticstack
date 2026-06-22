@@ -35,5 +35,5 @@ func deleteExceptionItem(ctx context.Context, client *clients.KibanaScopedClient
 		Id: &id,
 	}
 
-	return kibanaoapi.DeleteExceptionListItem(ctx, oapiClient, spaceID, params, kibanautil.WithRefreshFalse)
+	return kibanaoapi.DeleteExceptionListItem(ctx, oapiClient, spaceID, params, kibanautil.WithRefreshWaitFor)
 }

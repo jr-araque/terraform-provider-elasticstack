@@ -244,9 +244,10 @@ func doExceptionItemBulkRequest[Req any, Resp any](
 	// Kibana API version header
 	httpReq.Header.Set("elastic-api-version", "2023-10-31")
 
-	// Append refresh=false
+	// wait_for blocks until the write is visible to search, avoiding a race
+	// with the envelope's mandatory read-after-write.
 	q := httpReq.URL.Query()
-	q.Set("refresh", "false")
+	q.Set("refresh", "wait_for")
 	httpReq.URL.RawQuery = q.Encode()
 
 	resp, err := client.HTTP.Do(httpReq)

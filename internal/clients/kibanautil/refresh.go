@@ -22,12 +22,17 @@ import (
 	"net/http"
 )
 
-// WithRefreshFalse is a RequestEditorFn that appends refresh=false to the
-// request URL, preventing Elasticsearch from waiting for an index refresh
-// after each write operation.
-func WithRefreshFalse(_ context.Context, req *http.Request) error {
+// WithRefreshWaitFor is a RequestEditorFn that appends refresh=wait_for to
+// the request URL. This causes Elasticsearch to block the write response until
+// the written documents are visible to search, without forcing a synchronous
+// index flush. It is the correct value for write operations that are
+// immediately followed by a read (e.g. the provider's mandatory read-after-write).
+//
+// Use refresh=false (the ES default) only for fire-and-forget writes where
+// subsequent reads do not need to observe the written documents.
+func WithRefreshWaitFor(_ context.Context, req *http.Request) error {
 	q := req.URL.Query()
-	q.Set("refresh", "false")
+	q.Set("refresh", "wait_for")
 	req.URL.RawQuery = q.Encode()
 	return nil
 }

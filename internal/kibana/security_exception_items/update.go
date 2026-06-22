@@ -57,39 +57,32 @@ func updateExceptionItems(
 	listID := m.ListID.ValueString()
 	nsType := m.NamespaceType.ValueString()
 
-	var resultItems []BulkItemModel
+	// Each bulk phase is executed independently. Errors are accumulated but do
+	// not abort subsequent phases — the envelope's read-after-write will fetch
+	// the actual live state, so the next plan always computes an accurate diff
+	// regardless of which phase failed.
 
-	// Bulk create new items (chunked)
-	if len(toCreate) > 0 {
-		for start := 0; start < len(toCreate); start += bulkChunkSize {
-			end := min(start+bulkChunkSize, len(toCreate))
-			chunk := toCreate[start:end]
+	// Bulk create new items (chunked).
+	for start := 0; start < len(toCreate); start += bulkChunkSize {
+		chunk := toCreate[start:min(start+bulkChunkSize, len(toCreate))]
 
-			reqItems := make([]kibanaoapi.ExceptionItemBulkCreateItemRequest, 0, len(chunk))
-			for _, item := range chunk {
-				r, d := itemToBulkCreateRequest(ctx, item)
-				diags.Append(d...)
-				if diags.HasError() {
-					return entitycore.KibanaWriteResult[ExceptionItemsModel]{}, diags
-				}
-				reqItems = append(reqItems, r)
-			}
-
-			bulkResp, d := kibanaoapi.BulkCreateExceptionListItems(ctx, oapiClient, req.SpaceID, kibanaoapi.ExceptionItemBulkCreateRequest{
-				ListID:        listID,
-				NamespaceType: nsType,
-				Items:         reqItems,
-			})
+		reqItems := make([]kibanaoapi.ExceptionItemBulkCreateItemRequest, 0, len(chunk))
+		for _, item := range chunk {
+			r, d := itemToBulkCreateRequest(ctx, item)
 			diags.Append(d...)
 			if diags.HasError() {
-				return entitycore.KibanaWriteResult[ExceptionItemsModel]{}, diags
+				return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
 			}
+			reqItems = append(reqItems, r)
+		}
 
-			for _, apiItem := range bulkResp.Items {
-				item, d := itemFromAPI(ctx, apiItem, nil)
-				diags.Append(d...)
-				resultItems = append(resultItems, item)
-			}
+		bulkResp, d := kibanaoapi.BulkCreateExceptionListItems(ctx, oapiClient, req.SpaceID, kibanaoapi.ExceptionItemBulkCreateRequest{
+			ListID:        listID,
+			NamespaceType: nsType,
+			Items:         reqItems,
+		})
+		diags.Append(d...)
+		if bulkResp != nil {
 			for _, e := range bulkResp.Errors {
 				itemID := "(unknown)"
 				if e.ItemID != nil {
@@ -103,37 +96,27 @@ func updateExceptionItems(
 		}
 	}
 
-	// Bulk update changed items (chunked)
-	if len(toUpdate) > 0 {
-		for start := 0; start < len(toUpdate); start += bulkChunkSize {
-			end := min(start+bulkChunkSize, len(toUpdate))
-			chunk := toUpdate[start:end]
+	// Bulk update changed items (chunked).
+	for start := 0; start < len(toUpdate); start += bulkChunkSize {
+		chunk := toUpdate[start:min(start+bulkChunkSize, len(toUpdate))]
 
-			reqItems := make([]kibanaoapi.ExceptionItemBulkUpdateItemRequest, 0, len(chunk))
-			for _, item := range chunk {
-				r, d := itemToBulkUpdateRequest(ctx, item)
-				diags.Append(d...)
-				if diags.HasError() {
-					return entitycore.KibanaWriteResult[ExceptionItemsModel]{}, diags
-				}
-				reqItems = append(reqItems, r)
-			}
-
-			bulkResp, d := kibanaoapi.BulkUpdateExceptionListItems(ctx, oapiClient, req.SpaceID, kibanaoapi.ExceptionItemBulkUpdateRequest{
-				ListID:        listID,
-				NamespaceType: nsType,
-				Items:         reqItems,
-			})
+		reqItems := make([]kibanaoapi.ExceptionItemBulkUpdateItemRequest, 0, len(chunk))
+		for _, item := range chunk {
+			r, d := itemToBulkUpdateRequest(ctx, item)
 			diags.Append(d...)
 			if diags.HasError() {
-				return entitycore.KibanaWriteResult[ExceptionItemsModel]{}, diags
+				return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
 			}
+			reqItems = append(reqItems, r)
+		}
 
-			for _, apiItem := range bulkResp.Items {
-				item, d := itemFromAPI(ctx, apiItem, nil)
-				diags.Append(d...)
-				resultItems = append(resultItems, item)
-			}
+		bulkResp, d := kibanaoapi.BulkUpdateExceptionListItems(ctx, oapiClient, req.SpaceID, kibanaoapi.ExceptionItemBulkUpdateRequest{
+			ListID:        listID,
+			NamespaceType: nsType,
+			Items:         reqItems,
+		})
+		diags.Append(d...)
+		if bulkResp != nil {
 			for _, e := range bulkResp.Errors {
 				itemID := "(unknown)"
 				if e.ItemID != nil {
@@ -147,29 +130,20 @@ func updateExceptionItems(
 		}
 	}
 
-	// Bulk delete removed items (chunked)
-	if len(toDeleteIDs) > 0 {
-		for start := 0; start < len(toDeleteIDs); start += bulkChunkSize {
-			end := min(start+bulkChunkSize, len(toDeleteIDs))
-			chunk := toDeleteIDs[start:end]
+	// Bulk delete removed items (chunked).
+	for start := 0; start < len(toDeleteIDs); start += bulkChunkSize {
+		chunk := toDeleteIDs[start:min(start+bulkChunkSize, len(toDeleteIDs))]
 
-			_, d := kibanaoapi.BulkDeleteExceptionListItems(ctx, oapiClient, req.SpaceID, kibanaoapi.ExceptionItemBulkDeleteRequest{
-				IDs:           chunk,
-				NamespaceType: nsType,
-			})
-			diags.Append(d...)
-			if diags.HasError() {
-				return entitycore.KibanaWriteResult[ExceptionItemsModel]{}, diags
-			}
-		}
+		_, d := kibanaoapi.BulkDeleteExceptionListItems(ctx, oapiClient, req.SpaceID, kibanaoapi.ExceptionItemBulkDeleteRequest{
+			IDs:           chunk,
+			NamespaceType: nsType,
+		})
+		diags.Append(d...)
 	}
 
-	if diags.HasError() {
-		return entitycore.KibanaWriteResult[ExceptionItemsModel]{}, diags
-	}
-
-	d = setItems(ctx, &m, resultItems)
-	diags.Append(d...)
-
+	// Return the plan model without populating Items. The envelope performs a
+	// read-after-write that fetches actual live state from Kibana, so Items
+	// does not need to be set here. Returning m (rather than a zero model)
+	// ensures GetResourceID / GetSpaceID resolve correctly for the read call.
 	return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
 }

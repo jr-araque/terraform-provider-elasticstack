@@ -50,11 +50,8 @@ func createExceptionItems(
 	listID := m.ListID.ValueString()
 	nsType := m.NamespaceType.ValueString()
 
-	// Chunk items and send each batch
-	var createdItems []BulkItemModel
 	for start := 0; start < len(items); start += bulkChunkSize {
-		end := min(start+bulkChunkSize, len(items))
-		chunk := items[start:end]
+		chunk := items[start:min(start+bulkChunkSize, len(items))]
 
 		reqItems := make([]kibanaoapi.ExceptionItemBulkCreateItemRequest, 0, len(chunk))
 		for _, item := range chunk {
@@ -73,17 +70,12 @@ func createExceptionItems(
 		})
 		diags.Append(d...)
 		if diags.HasError() {
-			return entitycore.KibanaWriteResult[ExceptionItemsModel]{}, diags
+			// Transport error — set the composite ID so the envelope's
+			// read-after-write can still locate the partially-created resource.
+			m.ID = types.StringValue(buildCompositeID(req.SpaceID, listID))
+			return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
 		}
 
-		// Convert successful items
-		for _, apiItem := range bulkResp.Items {
-			item, d := itemFromAPI(ctx, apiItem, nil)
-			diags.Append(d...)
-			createdItems = append(createdItems, item)
-		}
-
-		// Report errors from this chunk as diagnostics
 		for _, e := range bulkResp.Errors {
 			itemID := "(unknown)"
 			if e.ItemID != nil {
@@ -96,13 +88,9 @@ func createExceptionItems(
 		}
 	}
 
-	if diags.HasError() {
-		return entitycore.KibanaWriteResult[ExceptionItemsModel]{}, diags
-	}
-
+	// Set the composite ID so resolveKibanaResourceIdentity can derive spaceID
+	// and listID for the mandatory read-after-write. Items are not set here;
+	// the envelope's Read call provides the authoritative state.
 	m.ID = types.StringValue(buildCompositeID(req.SpaceID, listID))
-	d = setItems(ctx, &m, createdItems)
-	diags.Append(d...)
-
 	return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
 }

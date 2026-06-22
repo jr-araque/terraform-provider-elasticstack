@@ -57,10 +57,14 @@ func updateExceptionItems(
 	listID := m.ListID.ValueString()
 	nsType := m.NamespaceType.ValueString()
 
-	// Each bulk phase is executed independently. Errors are accumulated but do
-	// not abort subsequent phases — the envelope's read-after-write will fetch
-	// the actual live state, so the next plan always computes an accurate diff
-	// regardless of which phase failed.
+	// Transport (HTTP) errors are fatal — Kibana is unreachable or misconfigured
+	// and continuing would fire further calls against a broken endpoint. Per-item
+	// errors inside a successful HTTP response are accumulated so the caller sees
+	// all failures in one plan output.
+	//
+	// The envelope always runs read-after-write after this returns, so the final
+	// persisted state reflects actual live Kibana state regardless of which items
+	// succeeded or failed.
 
 	// Bulk create new items (chunked).
 	for start := 0; start < len(toCreate); start += bulkChunkSize {
@@ -82,17 +86,19 @@ func updateExceptionItems(
 			Items:         reqItems,
 		})
 		diags.Append(d...)
-		if bulkResp != nil {
-			for _, e := range bulkResp.Errors {
-				itemID := "(unknown)"
-				if e.ItemID != nil {
-					itemID = *e.ItemID
-				}
-				diags.AddError(
-					fmt.Sprintf("Failed to create exception item %q during update", itemID),
-					fmt.Sprintf("status %d: %s", e.Error.StatusCode, e.Error.Message),
-				)
+		if diags.HasError() {
+			// Transport error — abort remaining phases.
+			return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
+		}
+		for _, e := range bulkResp.Errors {
+			itemID := "(unknown)"
+			if e.ItemID != nil {
+				itemID = *e.ItemID
 			}
+			diags.AddError(
+				fmt.Sprintf("Failed to create exception item %q during update", itemID),
+				fmt.Sprintf("status %d: %s", e.Error.StatusCode, e.Error.Message),
+			)
 		}
 	}
 
@@ -116,17 +122,18 @@ func updateExceptionItems(
 			Items:         reqItems,
 		})
 		diags.Append(d...)
-		if bulkResp != nil {
-			for _, e := range bulkResp.Errors {
-				itemID := "(unknown)"
-				if e.ItemID != nil {
-					itemID = *e.ItemID
-				}
-				diags.AddError(
-					fmt.Sprintf("Failed to update exception item %q", itemID),
-					fmt.Sprintf("status %d: %s", e.Error.StatusCode, e.Error.Message),
-				)
+		if diags.HasError() {
+			return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
+		}
+		for _, e := range bulkResp.Errors {
+			itemID := "(unknown)"
+			if e.ItemID != nil {
+				itemID = *e.ItemID
 			}
+			diags.AddError(
+				fmt.Sprintf("Failed to update exception item %q", itemID),
+				fmt.Sprintf("status %d: %s", e.Error.StatusCode, e.Error.Message),
+			)
 		}
 	}
 
@@ -139,6 +146,9 @@ func updateExceptionItems(
 			NamespaceType: nsType,
 		})
 		diags.Append(d...)
+		if diags.HasError() {
+			return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
+		}
 	}
 
 	// Return the plan model without populating Items. The envelope performs a

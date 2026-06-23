@@ -28,7 +28,7 @@ import (
 func deleteExceptionItems(
 	ctx context.Context,
 	client *clients.KibanaScopedClient,
-	resourceID, spaceID string,
+	_, spaceID string,
 	model ExceptionItemsModel,
 ) diag.Diagnostics {
 	var diags diag.Diagnostics
@@ -55,7 +55,7 @@ func deleteExceptionItems(
 
 	nsType := model.NamespaceType.ValueString()
 	if nsType == "" {
-		nsType = "single"
+		nsType = namespaceTypeSingle
 	}
 
 	// Chunk deletes

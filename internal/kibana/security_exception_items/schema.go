@@ -75,9 +75,9 @@ func getSchema(_ context.Context) schema.Schema {
 				MarkdownDescription: "Determines whether the exception list is available in all Kibana spaces or just the current space. Can be `single` (default) or `agnostic`.",
 				Optional:            true,
 				Computed:            true,
-				Default:             stringdefault.StaticString("single"),
+				Default:             stringdefault.StaticString(namespaceTypeSingle),
 				Validators: []validator.String{
-					stringvalidator.OneOf("single", "agnostic"),
+					stringvalidator.OneOf(namespaceTypeSingle, namespaceTypeAgnostic),
 				},
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),

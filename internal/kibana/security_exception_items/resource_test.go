@@ -36,19 +36,19 @@ func TestParseImportID(t *testing.T) {
 			name:       "agnostic suffix",
 			raw:        "default/my-list/agnostic",
 			wantID:     "default/my-list",
-			wantNsType: "agnostic",
+			wantNsType: namespaceTypeAgnostic,
 		},
 		{
 			name:       "explicit single suffix",
 			raw:        "default/my-list/single",
 			wantID:     "default/my-list",
-			wantNsType: "single",
+			wantNsType: namespaceTypeSingle,
 		},
 		{
 			name:       "list_id with slashes and agnostic suffix",
 			raw:        "default/my/nested/list/agnostic",
 			wantID:     "default/my/nested/list",
-			wantNsType: "agnostic",
+			wantNsType: namespaceTypeAgnostic,
 		},
 		{
 			name:       "list_id with slashes and no suffix",
@@ -60,7 +60,7 @@ func TestParseImportID(t *testing.T) {
 			name:       "non-default space with agnostic suffix",
 			raw:        "prod-space/my-list/agnostic",
 			wantID:     "prod-space/my-list",
-			wantNsType: "agnostic",
+			wantNsType: namespaceTypeAgnostic,
 		},
 	}
 

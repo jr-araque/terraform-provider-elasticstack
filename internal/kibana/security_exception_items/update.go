@@ -91,7 +91,7 @@ func updateExceptionItems(
 			return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
 		}
 		for _, e := range bulkResp.Errors {
-			itemID := "(unknown)"
+			itemID := unknownItemID
 			if e.ItemID != nil {
 				itemID = *e.ItemID
 			}
@@ -126,7 +126,7 @@ func updateExceptionItems(
 			return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
 		}
 		for _, e := range bulkResp.Errors {
-			itemID := "(unknown)"
+			itemID := unknownItemID
 			if e.ItemID != nil {
 				itemID = *e.ItemID
 			}

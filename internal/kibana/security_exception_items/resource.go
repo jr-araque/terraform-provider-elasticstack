@@ -65,10 +65,10 @@ func NewResource() resource.Resource {
 // "agnostic" / "single" cannot appear as valid list_id segments.
 func parseImportID(raw string) (id, nsType string) {
 	switch {
-	case strings.HasSuffix(raw, "/agnostic"):
-		return strings.TrimSuffix(raw, "/agnostic"), "agnostic"
-	case strings.HasSuffix(raw, "/single"):
-		return strings.TrimSuffix(raw, "/single"), "single"
+	case strings.HasSuffix(raw, "/"+namespaceTypeAgnostic):
+		return strings.TrimSuffix(raw, "/"+namespaceTypeAgnostic), namespaceTypeAgnostic
+	case strings.HasSuffix(raw, "/"+namespaceTypeSingle):
+		return strings.TrimSuffix(raw, "/"+namespaceTypeSingle), namespaceTypeSingle
 	default:
 		return raw, ""
 	}

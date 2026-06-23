@@ -42,16 +42,15 @@ func readExceptionItems(
 	listID := resourceID
 	nsType := model.NamespaceType.ValueString()
 	if nsType == "" {
-		nsType = "single"
+		nsType = namespaceTypeSingle
 	}
 	nsTypeVal := kbapi.SecurityExceptionsAPIExceptionNamespaceType(nsType)
-	listIDVal := kbapi.SecurityExceptionsAPIExceptionListHumanId(listID)
 
 	// Check that the parent exception list still exists. An empty items result
 	// from _find is ambiguous: it could mean the list exists with 0 items, or
 	// the list was deleted out-of-band. We disambiguate with an explicit GET.
 	list, d := kibanaoapi.GetExceptionList(ctx, oapiClient, spaceID, &kbapi.ReadExceptionListParams{
-		ListId:        &listIDVal,
+		ListId:        &listID,
 		NamespaceType: &nsTypeVal,
 	})
 	diags.Append(d...)

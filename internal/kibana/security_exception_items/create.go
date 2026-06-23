@@ -28,8 +28,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// bulkChunkSize is the maximum number of items per bulk API request.
-const bulkChunkSize = 1000
+const (
+	// bulkChunkSize is the maximum number of items per bulk API request.
+	bulkChunkSize = 1000
+
+	namespaceTypeSingle   = "single"
+	namespaceTypeAgnostic = "agnostic"
+	unknownItemID         = "(unknown)"
+)
 
 func createExceptionItems(
 	ctx context.Context,
@@ -77,7 +83,7 @@ func createExceptionItems(
 		}
 
 		for _, e := range bulkResp.Errors {
-			itemID := "(unknown)"
+			itemID := unknownItemID
 			if e.ItemID != nil {
 				itemID = *e.ItemID
 			}

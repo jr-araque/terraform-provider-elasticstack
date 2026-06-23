@@ -33,16 +33,16 @@ import (
 
 // ExceptionItemBulkCreateItemRequest is the per-item payload for a bulk create.
 type ExceptionItemBulkCreateItemRequest struct {
-	ItemID      *string                                                  `json:"item_id,omitempty"`
-	Type        string                                                   `json:"type"`
-	Name        string                                                   `json:"name"`
-	Description string                                                   `json:"description"`
-	Entries     kbapi.SecurityExceptionsAPIExceptionListItemEntryArray   `json:"entries"`
-	OsTypes     []string                                                 `json:"os_types,omitempty"`
-	Tags        []string                                                 `json:"tags,omitempty"`
-	Meta        map[string]any                                           `json:"meta,omitempty"`
-	ExpireTime  *string                                                  `json:"expire_time,omitempty"`
-	Comments    []ExceptionItemBulkComment                               `json:"comments,omitempty"`
+	ItemID      *string                                                `json:"item_id,omitempty"`
+	Type        string                                                 `json:"type"`
+	Name        string                                                 `json:"name"`
+	Description string                                                 `json:"description"`
+	Entries     kbapi.SecurityExceptionsAPIExceptionListItemEntryArray `json:"entries"`
+	OsTypes     []string                                               `json:"os_types,omitempty"`
+	Tags        []string                                               `json:"tags,omitempty"`
+	Meta        map[string]any                                         `json:"meta,omitempty"`
+	ExpireTime  *string                                                `json:"expire_time,omitempty"`
+	Comments    []ExceptionItemBulkComment                             `json:"comments,omitempty"`
 }
 
 // ExceptionItemBulkComment is a comment payload for bulk create.
@@ -52,24 +52,24 @@ type ExceptionItemBulkComment struct {
 
 // ExceptionItemBulkCreateRequest is the request body for bulk create.
 type ExceptionItemBulkCreateRequest struct {
-	ListID        string                                `json:"list_id"`
-	NamespaceType string                                `json:"namespace_type,omitempty"`
-	Items         []ExceptionItemBulkCreateItemRequest  `json:"items"`
+	ListID        string                               `json:"list_id"`
+	NamespaceType string                               `json:"namespace_type,omitempty"`
+	Items         []ExceptionItemBulkCreateItemRequest `json:"items"`
 }
 
 // ExceptionItemBulkUpdateItemRequest is the per-item payload for a bulk update.
 type ExceptionItemBulkUpdateItemRequest struct {
-	ID          string                                                   `json:"id"`
-	Version     *string                                                  `json:"_version,omitempty"`
-	Type        string                                                   `json:"type"`
-	Name        string                                                   `json:"name"`
-	Description string                                                   `json:"description"`
-	Entries     kbapi.SecurityExceptionsAPIExceptionListItemEntryArray   `json:"entries"`
-	OsTypes     []string                                                 `json:"os_types,omitempty"`
-	Tags        []string                                                 `json:"tags,omitempty"`
-	Meta        map[string]any                                           `json:"meta,omitempty"`
-	ExpireTime  *string                                                  `json:"expire_time,omitempty"`
-	Comments    []ExceptionItemBulkUpdateComment                         `json:"comments,omitempty"`
+	ID          string                                                 `json:"id"`
+	Version     *string                                                `json:"_version,omitempty"`
+	Type        string                                                 `json:"type"`
+	Name        string                                                 `json:"name"`
+	Description string                                                 `json:"description"`
+	Entries     kbapi.SecurityExceptionsAPIExceptionListItemEntryArray `json:"entries"`
+	OsTypes     []string                                               `json:"os_types,omitempty"`
+	Tags        []string                                               `json:"tags,omitempty"`
+	Meta        map[string]any                                         `json:"meta,omitempty"`
+	ExpireTime  *string                                                `json:"expire_time,omitempty"`
+	Comments    []ExceptionItemBulkUpdateComment                       `json:"comments,omitempty"`
 }
 
 // ExceptionItemBulkUpdateComment is a comment payload for bulk update.
@@ -80,9 +80,9 @@ type ExceptionItemBulkUpdateComment struct {
 
 // ExceptionItemBulkUpdateRequest is the request body for bulk update.
 type ExceptionItemBulkUpdateRequest struct {
-	ListID        string                                `json:"list_id"`
-	NamespaceType string                                `json:"namespace_type,omitempty"`
-	Items         []ExceptionItemBulkUpdateItemRequest  `json:"items"`
+	ListID        string                               `json:"list_id"`
+	NamespaceType string                               `json:"namespace_type,omitempty"`
+	Items         []ExceptionItemBulkUpdateItemRequest `json:"items"`
 }
 
 // ExceptionItemBulkDeleteRequest is the request body for bulk delete.
@@ -177,7 +177,7 @@ func FindExceptionListItemsAllPages(
 	for {
 		p := page
 		pp := perPage
-		listIDs := []kbapi.SecurityExceptionsAPIExceptionListHumanId{kbapi.SecurityExceptionsAPIExceptionListHumanId(listID)}
+		listIDs := []kbapi.SecurityExceptionsAPIExceptionListHumanId{listID}
 		params := &kbapi.FindExceptionListItemsParams{
 			ListId:        listIDs,
 			NamespaceType: &[]kbapi.SecurityExceptionsAPIExceptionNamespaceType{nsType},

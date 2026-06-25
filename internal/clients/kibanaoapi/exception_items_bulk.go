@@ -101,10 +101,18 @@ type ExceptionItemBulkOperationError struct {
 	} `json:"error"`
 }
 
+// ExceptionItemBulkSummary is the operation summary returned by bulk create.
+type ExceptionItemBulkSummary struct {
+	Total     int `json:"total"`
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+}
+
 // ExceptionItemBulkResponse is the response from bulk create or update.
 type ExceptionItemBulkResponse struct {
-	Items  []kbapi.SecurityExceptionsAPIExceptionListItem `json:"items"`
-	Errors []ExceptionItemBulkOperationError              `json:"errors"`
+	Items   []kbapi.SecurityExceptionsAPIExceptionListItem `json:"items"`
+	Errors  []ExceptionItemBulkOperationError              `json:"errors"`
+	Summary ExceptionItemBulkSummary                       `json:"summary"`
 }
 
 // ExceptionItemBulkDeleteResponse is the response from bulk delete.

@@ -82,15 +82,22 @@ func createExceptionItems(
 			return entitycore.KibanaWriteResult[ExceptionItemsModel]{Model: m}, diags
 		}
 
-		for _, e := range bulkResp.Errors {
-			itemID := unknownItemID
-			if e.ItemID != nil {
-				itemID = *e.ItemID
-			}
-			diags.AddError(
-				fmt.Sprintf("Failed to create exception item %q", itemID),
-				fmt.Sprintf("status %d: %s", e.Error.StatusCode, e.Error.Message),
+		if len(bulkResp.Errors) > 0 {
+			s := bulkResp.Summary
+			diags.AddWarning(
+				fmt.Sprintf("Bulk create partially failed (%d/%d succeeded)", s.Succeeded, s.Total),
+				fmt.Sprintf("%d item(s) failed in this batch", s.Failed),
 			)
+			for _, e := range bulkResp.Errors {
+				itemID := unknownItemID
+				if e.ItemID != nil {
+					itemID = *e.ItemID
+				}
+				diags.AddError(
+					fmt.Sprintf("Failed to create exception item %q", itemID),
+					fmt.Sprintf("status %d: %s", e.Error.StatusCode, e.Error.Message),
+				)
+			}
 		}
 	}
 

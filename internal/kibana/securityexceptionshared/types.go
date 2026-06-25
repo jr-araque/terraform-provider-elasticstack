@@ -57,20 +57,20 @@ type CommentModel struct {
 // GetEntryAttrTypes returns the Terraform attribute types for an EntryModel object.
 func GetEntryAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		AttrType:     types.StringType,
-		AttrField:    types.StringType,
-		AttrOperator: types.StringType,
-		AttrValue:    types.StringType,
-		AttrValues:   types.ListType{ElemType: types.StringType},
+		AttrType:      types.StringType,
+		AttrField:     types.StringType,
+		AttrOperator:  types.StringType,
+		AttrValue:     types.StringType,
+		AttrValues:    types.ListType{ElemType: types.StringType},
 		EntryTypeList: types.ObjectType{AttrTypes: GetListAttrTypes()},
-		AttrEntries:  types.ListType{ElemType: types.ObjectType{AttrTypes: GetNestedEntryAttrTypes()}},
+		AttrEntries:   types.ListType{ElemType: types.ObjectType{AttrTypes: GetNestedEntryAttrTypes()}},
 	}
 }
 
 // GetListAttrTypes returns the Terraform attribute types for an EntryListModel object.
 func GetListAttrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"id":    types.StringType,
+		"id":     types.StringType,
 		AttrType: types.StringType,
 	}
 }

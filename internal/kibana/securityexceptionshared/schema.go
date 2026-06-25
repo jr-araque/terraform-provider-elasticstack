@@ -60,8 +60,8 @@ func EntriesSchema() schema.ListNestedAttribute {
 					MarkdownDescription: "The value to match (for `match` and `wildcard` types).",
 					Optional:            true,
 					Validators: []validator.String{
-						validators.RequiredIfDependentPathOneOf(
-							path.Root(AttrType),
+						validators.RequiredIfDependentPathExpressionOneOf(
+							path.MatchRelative().AtParent().AtName(AttrType),
 							[]string{EntryTypeMatch, EntryTypeWildcard},
 						),
 					},
@@ -115,8 +115,8 @@ func EntriesSchema() schema.ListNestedAttribute {
 								MarkdownDescription: "The value to match (for `match` type).",
 								Optional:            true,
 								Validators: []validator.String{
-									validators.RequiredIfDependentPathOneOf(
-										path.Root(AttrType),
+									validators.RequiredIfDependentPathExpressionOneOf(
+										path.MatchRelative().AtParent().AtName(AttrType),
 										[]string{EntryTypeMatch},
 									),
 								},
@@ -126,8 +126,8 @@ func EntriesSchema() schema.ListNestedAttribute {
 								MarkdownDescription: "Array of values to match (for `match_any` type).",
 								Optional:            true,
 								Validators: []validator.List{
-									validators.RequiredIfDependentPathOneOf(
-										path.Root(AttrType),
+									validators.RequiredIfDependentPathExpressionOneOf(
+										path.MatchRelative().AtParent().AtName(AttrType),
 										[]string{EntryTypeMatchAny},
 									),
 								},

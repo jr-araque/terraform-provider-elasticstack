@@ -151,7 +151,7 @@ func itemAttributes() map[string]schema.Attribute {
 			CustomType:          timetypes.RFC3339Type{},
 		},
 		"comments": shared.CommentsSchema(),
-		"_version": schema.StringAttribute{
+		"version": schema.StringAttribute{
 			MarkdownDescription: "The version token used for optimistic concurrency control during updates.",
 			Computed:            true,
 			PlanModifiers: []planmodifier.String{

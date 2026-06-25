@@ -72,7 +72,7 @@ type BulkItemModel struct {
 
 	// Computed fields populated by Kibana after create/read
 	ID           types.String `tfsdk:"id"`
-	Version      types.String `tfsdk:"_version"`
+	Version      types.String `tfsdk:"version"`
 	TieBreakerID types.String `tfsdk:"tie_breaker_id"`
 	CreatedAt    types.String `tfsdk:"created_at"`
 	CreatedBy    types.String `tfsdk:"created_by"`
@@ -94,7 +94,7 @@ func bulkItemAttrTypes() map[string]attr.Type {
 		"expire_time":    timetypes.RFC3339Type{},
 		"comments":       types.ListType{ElemType: types.ObjectType{AttrTypes: shared.GetCommentAttrTypes()}},
 		"id":             types.StringType,
-		"_version":       types.StringType,
+		"version":        types.StringType,
 		"tie_breaker_id": types.StringType,
 		"created_at":     types.StringType,
 		"created_by":     types.StringType,

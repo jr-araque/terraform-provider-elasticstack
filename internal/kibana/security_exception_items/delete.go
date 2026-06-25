@@ -20,8 +20,10 @@ package securityexceptionitems
 import (
 	"context"
 
+	"github.com/elastic/terraform-provider-elasticstack/generated/kbapi"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients"
 	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanaoapi"
+	"github.com/elastic/terraform-provider-elasticstack/internal/clients/kibanautil"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
@@ -41,7 +43,6 @@ func deleteExceptionItems(
 		return diags
 	}
 
-	// Collect all item IDs from state
 	var ids []string
 	for _, item := range items {
 		if !item.ID.IsNull() && item.ID.ValueString() != "" {
@@ -57,19 +58,34 @@ func deleteExceptionItems(
 	if nsType == "" {
 		nsType = namespaceTypeSingle
 	}
+	nsTypeVal := kbapi.SecurityExceptionsAPIExceptionNamespaceType(nsType)
 
-	// Chunk deletes
+	// Attempt bulk delete. If the endpoint is not yet available (Kibana returns
+	// a non-200 such as 404 for a missing route), fall back to individual item
+	// deletes so the resource can be destroyed during development.
 	for start := 0; start < len(ids); start += bulkChunkSize {
 		end := min(start+bulkChunkSize, len(ids))
 		chunk := ids[start:end]
 
-		_, d := kibanaoapi.BulkDeleteExceptionListItems(ctx, oapiClient, spaceID, kibanaoapi.ExceptionItemBulkDeleteRequest{
+		_, bulkDiags := kibanaoapi.BulkDeleteExceptionListItems(ctx, oapiClient, spaceID, kibanaoapi.ExceptionItemBulkDeleteRequest{
 			IDs:           chunk,
 			NamespaceType: nsType,
 		})
-		diags.Append(d...)
-		if diags.HasError() {
-			return diags
+		if !bulkDiags.HasError() {
+			continue
+		}
+
+		// Bulk endpoint not available — fall back to per-item deletes.
+		for _, id := range chunk {
+			itemID := id
+			d := kibanaoapi.DeleteExceptionListItem(ctx, oapiClient, spaceID, &kbapi.DeleteExceptionListItemParams{
+				Id:            &itemID,
+				NamespaceType: &nsTypeVal,
+			}, kibanautil.WithRefreshWaitFor)
+			diags.Append(d...)
+			if diags.HasError() {
+				return diags
+			}
 		}
 	}
 

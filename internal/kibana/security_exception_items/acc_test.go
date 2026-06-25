@@ -31,6 +31,45 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
 
+// TestAccResourceExceptionItemsBulkCreate tests only the Create + Read lifecycle.
+// Use this when _bulk_update and _bulk_delete are not yet available in Kibana —
+// destroy falls back to individual item deletes automatically.
+func TestAccResourceExceptionItemsBulkCreate(t *testing.T) {
+	listID := fmt.Sprintf("test-exception-items-list-%s", uuid.New().String()[:8])
+	itemID1 := fmt.Sprintf("bulk-item-1-%s", uuid.New().String()[:8])
+	itemID2 := fmt.Sprintf("bulk-item-2-%s", uuid.New().String()[:8])
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { acctest.PreCheck(t) },
+		CheckDestroy: checkResourceExceptionItemsDestroy,
+		Steps: []resource.TestStep{
+			{
+				ProtoV6ProviderFactories: acctest.Providers,
+				ConfigDirectory:          acctest.NamedTestCaseDirectory("create"),
+				ConfigVariables: config.Variables{
+					"list_id":   config.StringVariable(listID),
+					"item_id_1": config.StringVariable(itemID1),
+					"item_id_2": config.StringVariable(itemID2),
+				},
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttrSet("elasticstack_kibana_security_exception_items.test", "id"),
+					resource.TestCheckResourceAttr("elasticstack_kibana_security_exception_items.test", "list_id", listID),
+					resource.TestCheckResourceAttr("elasticstack_kibana_security_exception_items.test", "namespace_type", "single"),
+					resource.TestCheckResourceAttr("elasticstack_kibana_security_exception_items.test", "items.#", "2"),
+					resource.TestCheckResourceAttr("elasticstack_kibana_security_exception_items.test", "items.0.item_id", itemID1),
+					resource.TestCheckResourceAttr("elasticstack_kibana_security_exception_items.test", "items.0.name", "Bulk Item 1"),
+					resource.TestCheckResourceAttr("elasticstack_kibana_security_exception_items.test", "items.1.item_id", itemID2),
+					resource.TestCheckResourceAttr("elasticstack_kibana_security_exception_items.test", "items.1.name", "Bulk Item 2"),
+					resource.TestCheckResourceAttrSet("elasticstack_kibana_security_exception_items.test", "items.0.id"),
+					resource.TestCheckResourceAttrSet("elasticstack_kibana_security_exception_items.test", "items.0.created_at"),
+				),
+			},
+		},
+	})
+}
+
+// TestAccResourceExceptionItems tests the full Create/Update/Delete lifecycle.
+// Requires _bulk, _bulk_update, and _bulk_delete Kibana endpoints.
 func TestAccResourceExceptionItems(t *testing.T) {
 	listID := fmt.Sprintf("test-exception-items-list-%s", uuid.New().String()[:8])
 	itemID1 := fmt.Sprintf("bulk-item-1-%s", uuid.New().String()[:8])
@@ -45,7 +84,7 @@ func TestAccResourceExceptionItems(t *testing.T) {
 				ProtoV6ProviderFactories: acctest.Providers,
 				ConfigDirectory:          acctest.NamedTestCaseDirectory("create"),
 				ConfigVariables: config.Variables{
-					"list_id": config.StringVariable(listID),
+					"list_id":   config.StringVariable(listID),
 					"item_id_1": config.StringVariable(itemID1),
 					"item_id_2": config.StringVariable(itemID2),
 				},
